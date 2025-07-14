@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../src/index.ts"],
+  "sourcesContent": ["export function fn(a, b) {\r\n  console.log('hello world');\r\n  return a + b;\r\n}"],
+  "mappings": ";;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAO,SAAS,GAAG,GAAG,GAAG;AACvB,UAAQ,IAAI,aAAa;AACzB,SAAO,IAAI;AACb;",
+  "names": []
+}
