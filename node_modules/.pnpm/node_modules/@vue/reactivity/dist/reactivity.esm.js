@@ -1,52 +1,30 @@
-// packages/reactivity/src/effect.ts
-var activeSub;
-var ReactiveEffect = class {
-  constructor(fn) {
-    this.fn = fn;
-  }
-  deps;
-  depsTail;
-  run() {
-    const perSub = activeSub;
-    activeSub = this;
-    this.depsTail = void 0;
-    try {
-      return this.fn();
-    } finally {
-      activeSub = perSub;
-    }
-  }
-  notify() {
-    this.scheduler();
-  }
-  scheduler() {
-    this.run();
-  }
-};
-function effect(fn, options) {
-  const e = new ReactiveEffect(fn);
-  Object.assign(e, options);
-  e.run();
-  const runner = e.run.bind(e);
-  runner.effect = e;
-  return runner;
-}
-
 // packages/reactivity/src/system.ts
+var linkPool;
 function link(dep, sub) {
   const currentDep = sub.depsTail;
   const nextDep = currentDep === void 0 ? sub.deps : currentDep.nextDep;
   if (nextDep && nextDep.dep === dep) {
+    sub.depsTail = nextDep;
     console.log("\u76F8\u540C\u7684\u4F9D\u8D56\u9879\uFF0C\u76F4\u63A5\u590D\u7528");
     return;
   }
-  const newLink = {
-    sub,
-    nextSub: void 0,
-    perSub: void 0,
-    dep,
-    nextDep: void 0
-  };
+  let newLink;
+  if (linkPool) {
+    console.log("\u590D\u7528linkPool");
+    newLink = linkPool;
+    linkPool = linkPool.nextDep;
+    newLink.nextDep = nextDep;
+    newLink.dep = dep;
+    newLink.sub = sub;
+  } else {
+    newLink = {
+      sub,
+      nextSub: void 0,
+      perSub: void 0,
+      dep,
+      nextDep
+    };
+  }
   if (dep.subsTail) {
     dep.subsTail.nextSub = newLink;
     newLink.perSub = dep.subsTail;
@@ -67,10 +45,84 @@ function propagate(subs) {
   let link2 = subs;
   let queuedEffect = [];
   while (link2) {
-    queuedEffect.push(link2.sub);
+    const sub = link2.sub;
+    if (!sub.tracking) {
+      queuedEffect.push(link2.sub);
+    }
     link2 = link2.nextSub;
   }
   queuedEffect.forEach((effect2) => effect2.notify());
+}
+function startTrack(sub) {
+  sub.tracking = true;
+  sub.depsTail = void 0;
+}
+function endTrack(sub) {
+  sub.tracking = false;
+  if (sub.depsTail?.nextDep) {
+    clearTracking(sub.depsTail.nextDep);
+    sub.depsTail.nextDep = void 0;
+  } else if (!sub.depsTail && sub.deps) {
+    clearTracking(sub.deps);
+    sub.deps = void 0;
+  }
+}
+function clearTracking(link2) {
+  while (link2) {
+    const { dep, perSub, nextSub, nextDep } = link2;
+    if (perSub) {
+      perSub.nextSub = nextSub;
+      link2 = void 0;
+    } else {
+      dep.subs = nextSub;
+    }
+    if (nextSub) {
+      nextSub.perSub = perSub;
+      link2.perSub = void 0;
+    } else {
+      dep.subsTail = perSub;
+    }
+    link2.dep = link2.sub = void 0;
+    link2.nextDep = linkPool;
+    linkPool = link2;
+    link2 = nextDep;
+  }
+}
+
+// packages/reactivity/src/effect.ts
+var activeSub;
+var ReactiveEffect = class {
+  constructor(fn) {
+    this.fn = fn;
+  }
+  deps;
+  depsTail;
+  tracking = false;
+  run() {
+    const perSub = activeSub;
+    activeSub = this;
+    startTrack(this);
+    try {
+      return this.fn();
+    } finally {
+      endTrack(this);
+      activeSub = perSub;
+    }
+  }
+  notify() {
+    this.scheduler();
+  }
+  scheduler() {
+    this.run();
+  }
+};
+function effect(fn, options) {
+  const e = new ReactiveEffect(fn);
+  Object.assign(e, options);
+  e.run();
+  const runner = e.run.bind(e);
+  runner.effect = e;
+  return runner;
 }
 
 // packages/reactivity/src/ref.ts

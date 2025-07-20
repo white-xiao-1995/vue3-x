@@ -10,23 +10,36 @@
     </style>
   </head>
   <body>
-    <button id="btn">按钮</button>
+    <div id="app"></div>
+    <button id="flagBtn">flag</button>
+    <button id="nameBtn">name</button>
+    <button id="ageBtn">age</button>
     <script type="module">
       import { ref, effect } from '../dist/reactivity.esm.js'
       // import {ref, effect} from '../../../node_modules/vue/dist/vue.esm-browser.prod.js'
       console.log(ref, effect)
 
       const flag = ref(true)
-      const count = ref(1)
+      // const count = ref(1)
+      const name = ref('张三')
+      const age = ref(18)
       const e = effect(() => {
-        flag.value
-        count.value
-        console.log('effect flag.value', flag.value)
+        if(flag.value){
+          app.innerHTML = name.value
+        }else{
+          app.innerHTML = age.value
+        }
       })
       console.dir(e) 
-      btn.onclick = () => {
+      flagBtn.onclick = () => {
         flag.value = !flag.value 
         console.log(flag);
+      }
+      nameBtn.onclick = () => {
+        name.value += 1
+      }
+      ageBtn.onclick = () => {
+        age.value += 1
       }
     </script>
   </body>

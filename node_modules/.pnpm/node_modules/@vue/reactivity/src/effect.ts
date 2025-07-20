@@ -1,4 +1,4 @@
-import { Link } from "./system"
+import { endTrack, Link, startTrack } from "./system"
 
 export let activeSub
 
@@ -7,14 +7,17 @@ export class ReactiveEffect {
 
   deps: Link | undefined
   depsTail: Link | undefined
+
+  tracking = false
   run() {
 
     const perSub = activeSub
     activeSub = this
-    this.depsTail = undefined
+    startTrack(this)
     try {
       return this.fn()
     } finally {
+      endTrack(this)
       activeSub = perSub
     }
     // this.fn()
@@ -27,6 +30,7 @@ export class ReactiveEffect {
     this.run()
   }
 }
+
 export function effect(fn, options) {
   const e = new ReactiveEffect(fn)
   Object.assign(e, options)
